@@ -96,27 +96,29 @@ const uploadFile = () => {
   if (inputFile) {
     inputFile.addEventListener(
       "change",
-      (event: EventTarget) => {
+      (event: Event) => {
         // 檔案資訊
-        const fileData = event.target.files[0];
+        const fileData = (event.target as HTMLInputElement).files;
+        if (!fileData?.length) return;
+        const firstFile = fileData[0];
 
         // transfer to base64 format
         const reader = new FileReader();
-        reader.readAsDataURL(fileData);
+        reader.readAsDataURL(firstFile);
         reader.onload = function (e) {
           const fileMaxSize = 1024 * 1024 * 10; //10 MB
 
-          if (fileData.size > fileMaxSize) {
+          if (firstFile.size > fileMaxSize) {
             alert("檔案太大, 請上傳其他檔案");
             return;
           }
 
           if (fileUploadImg.value && fileUploadName.value) {
             fileUploadImg.value.src = this.result as string;
-            fileUploadName.value.innerText = fileData.name;
+            fileUploadName.value.innerText = firstFile.name;
           }
 
-          const uploadData = { url: this.result, fileName: fileData.name };
+          const uploadData = { url: this.result, fileName: firstFile.name };
           deepCloneTodo.value.file = uploadData;
         };
       },
