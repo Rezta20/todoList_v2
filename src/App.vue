@@ -11,30 +11,21 @@ interface todoListsItem {
   isMarked: boolean;
   date: string;
   time: string;
-  file: boolean;
-  comment: string;
-}
-
-interface todoItem {
-  isChecked: boolean;
-  title: string;
-  isMarked: boolean;
-  date: string;
-  time: string;
-  file: boolean;
+  file: object;
   comment: string;
 }
 
 // refs
 const todoLists: Ref<todoListsItem[]> = ref([]);
 
-const newTodoItem: Ref<todoItem> = ref({
+const newTodoItem: Ref<todoListsItem> = ref({
+  id: +new Date(),
   isChecked: false,
   title: "",
   isMarked: false,
   date: "",
   time: "",
-  file: false,
+  file: {},
   comment: "",
 });
 
@@ -42,11 +33,11 @@ const tag: Ref<string> = ref("myTasks");
 const showAddBtn: Ref<boolean> = ref(true);
 
 // computed
-const timeAndMarkRanking: Ref<todoItem[]> = computed(() => {
+const timeAndMarkRanking: Ref<todoListsItem[]> = computed(() => {
   // const arr = todoLists.value.map((todo) => todo);
   const arr = [...todoLists.value];
 
-  return arr.sort((a: todoItem, b: todoItem) => {
+  return arr.sort((a: todoListsItem, b: todoListsItem) => {
     const mileSecondsOfA = +new Date(`${a.date} ${a.time}`) || 0;
     const mileSecondsOfB = +new Date(`${b.date} ${b.time}`) || 0;
 
@@ -60,7 +51,7 @@ const timeAndMarkRanking: Ref<todoItem[]> = computed(() => {
   });
 });
 
-const navbarFilter: Ref<todoItem[]> = computed(() => {
+const navbarFilter: Ref<todoListsItem[]> = computed(() => {
   switch (tag.value) {
     case "myTasks":
       return timeAndMarkRanking.value;
@@ -73,20 +64,15 @@ const navbarFilter: Ref<todoItem[]> = computed(() => {
   }
 });
 
-const tasksStatusLists: Ref<todoItem[]> = computed(() => {
-  if (!todoLists.value.length) {
-    console.log("no length");
-    return [];
-  } else {
-    switch (tag.value) {
-      case "myTasks":
-      case "inProgress":
-        return todoLists.value.filter((item) => !item.isChecked);
-      case "completed":
-        return todoLists.value.filter((item) => item.isChecked);
-      default:
-        return todoLists.value;
-    }
+const tasksStatusLists: Ref<todoListsItem[]> = computed(() => {
+  switch (tag.value) {
+    case "myTasks":
+    case "inProgress":
+      return todoLists.value.filter((item) => !item.isChecked);
+    case "completed":
+      return todoLists.value.filter((item) => item.isChecked);
+    default:
+      return todoLists.value;
   }
 });
 
@@ -104,11 +90,12 @@ const taskStatusText: Ref<string> = computed(() => {
 
 // mounted
 onMounted(() => {
-  const dataFromLocalStorage = JSON.parse(
-    window.localStorage.getItem("todoLists")
-  );
+  const data = window.localStorage.getItem("todoLists") || "[]";
+  const dataFromLocalStorage = JSON.parse(data);
 
-  todoLists.value.push(dataFromLocalStorage);
+  dataFromLocalStorage.forEach((todoItem: todoListsItem) =>
+    todoLists.value.push(todoItem)
+  );
 });
 
 // function
@@ -125,6 +112,7 @@ const reStructureTodo = (currentTodoItem: todoListsItem) => {
     currentTodoItem,
     ...todoLists.value.slice(index + 1),
   ];
+  setItemToLocalStorage();
 };
 
 const cancelCloseShowAddBtn = () => {
@@ -134,6 +122,10 @@ const cancelCloseShowAddBtn = () => {
 const addNewTask = (newTodoItem: todoListsItem) => {
   newTodoItem.id = +new Date();
   todoLists.value.push(newTodoItem);
+  setItemToLocalStorage();
+};
+
+const setItemToLocalStorage = () => {
   window.localStorage.setItem("todoLists", JSON.stringify(todoLists.value));
 };
 </script>
@@ -154,7 +146,7 @@ const addNewTask = (newTodoItem: todoListsItem) => {
             'text-blue-dark': tag !== 'myTasks',
           }"
         >
-          My Task s
+          My Tasks
         </button>
         <button
           @click="tag = 'inProgress'"
@@ -202,7 +194,7 @@ const addNewTask = (newTodoItem: todoListsItem) => {
       <div class="mt-4 w-full">
         <Card
           v-for="(todo, index) in navbarFilter"
-          :key="index"
+          :key="todo.id"
           :todoItem="todo"
           @saveTodo="reStructureTodo"
         />

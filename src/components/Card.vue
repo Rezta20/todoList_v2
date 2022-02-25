@@ -1,5 +1,11 @@
 <script setup lang="ts">
+import { faCommentsDollar } from "@fortawesome/free-solid-svg-icons";
 import { watch, ref, computed, Ref, PropType, ComputedRef } from "vue";
+
+interface file {
+  fileName: string;
+  url: string | ArrayBuffer | null;
+}
 
 interface todoItem {
   id: number;
@@ -8,7 +14,7 @@ interface todoItem {
   isMarked: boolean;
   date: string;
   time: string;
-  file: boolean;
+  file: file;
   comment: string;
 }
 
@@ -28,14 +34,10 @@ const isEditing: Ref<boolean> = ref(false);
 const deepCloneTodo: Ref<todoItem> = ref(
   JSON.parse(JSON.stringify(props.todoItem))
 );
-
-// interface Obj {
-//     id?: number
-// }
-
-// const a: Obj = { id: 123 };
-
-// const b = a.id as number + 1;
+// DOM
+const fileUploadImg: Ref<HTMLImageElement | undefined> = ref();
+const fileUploadName: Ref<HTMLElement | undefined> = ref();
+const fileUploader: Ref<HTMLInputElement | undefined> = ref();
 
 // emits
 const emits = defineEmits(["cancelEdit", "saveTodo", "cancelCloseShowAddBtn"]);
@@ -79,7 +81,6 @@ const emitSaveTodo = () => {
 
 const closeSave = () => {
   if (props.source === "newCard") {
-    console.log("newCard");
     emitSaveTodo();
     emits("cancelCloseShowAddBtn");
     return;
@@ -87,6 +88,41 @@ const closeSave = () => {
 
   isEditing.value = false;
   emitSaveTodo();
+};
+
+const uploadFile = () => {
+  const inputFile = fileUploader.value;
+
+  if (inputFile) {
+    inputFile.addEventListener(
+      "change",
+      (event: EventTarget) => {
+        // 檔案資訊
+        const fileData = event.target.files[0];
+
+        // transfer to base64 format
+        const reader = new FileReader();
+        reader.readAsDataURL(fileData);
+        reader.onload = function (e) {
+          const fileMaxSize = 1024 * 1024 * 10; //10 MB
+
+          if (fileData.size > fileMaxSize) {
+            alert("檔案太大, 請上傳其他檔案");
+            return;
+          }
+
+          if (fileUploadImg.value && fileUploadName.value) {
+            fileUploadImg.value.src = this.result as string;
+            fileUploadName.value.innerText = fileData.name;
+          }
+
+          const uploadData = { url: this.result, fileName: fileData.name };
+          deepCloneTodo.value.file = uploadData;
+        };
+      },
+      false
+    );
+  }
 };
 </script>
 
@@ -141,11 +177,10 @@ const closeSave = () => {
           <button @click="isEditing = true">
             <font-awesome-icon
               :icon="['fas', 'pencil']"
-              class="px-2 text-m"
-              :class="{
-                'text-primary-black': !isEditing,
-                'text-blue-light': isAdd || isEditing,
-              }"
+              :class="[
+                'px-2 text-m',
+                isAdd || isEditing ? 'text-blue-light' : 'text-black',
+              ]"
             />
           </button>
         </div>
@@ -153,16 +188,16 @@ const closeSave = () => {
       <!-- icon line -->
       <div
         v-if="!isEditing && !isAdd"
-        class="flex justify-between w-32 ml-8 mt-1 text-gray-dark"
+        class="flex w-32 ml-9 mt-1 text-gray-dark"
       >
-        <div v-if="deepCloneTodo.date" class="icon">
+        <div v-if="deepCloneTodo.date" class="icon pr-3">
           <font-awesome-icon :icon="['fas', 'calendar-days']" class="text-m" />
           {{ dateFormat }}
         </div>
-        <div v-if="deepCloneTodo.file" class="icon">
+        <div v-if="deepCloneTodo.file.fileName" class="icon pr-3">
           <font-awesome-icon :icon="['far', 'file']" class="text-m" />
         </div>
-        <div v-if="deepCloneTodo.comment" class="icon px-1">
+        <div v-if="deepCloneTodo.comment" class="icon">
           <font-awesome-icon :icon="['far', 'comment-dots']" class="text-m" />
         </div>
       </div>
@@ -208,11 +243,29 @@ const closeSave = () => {
             <font-awesome-icon :icon="['far', 'file']" class="text-m" />
             <h4 class="text-m text-primary-black font-medium px-2">File</h4>
           </div>
-          <button
+          <img
+            ref="fileUploadImg"
+            id="fileImg"
+            class="mx-6 mt-1 rounded w-5/6"
+            :src="todoItem.file.url"
+          />
+          <p ref="fileUploadName" id="fileName" class="mx-6 mt-1">
+            {{ todoItem.file.fileName }}
+          </p>
+          <input
+            type="file"
+            id="fileUploader"
+            ref="fileUploader"
+            accept="image/png, image/jpeg"
+            class="hidden"
+            @click="uploadFile"
+          />
+          <label
+            for="fileUploader"
             class="mt-1 bg-gray-middleLight text-primary-white w-7 h-7 rounded text-m flex justify-center items-center hover:bg-blue-light mx-6"
           >
             +
-          </button>
+          </label>
         </div>
         <div class="mt-4">
           <div class="flex items-center">
